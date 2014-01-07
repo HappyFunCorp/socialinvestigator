@@ -16,6 +16,7 @@ gem 'tilt'
 gem 'redis'
 gem 'omniauth-twitter'
 gem 'sinatra-twitter-bootstrap', :require => 'sinatra/twitter-bootstrap'
+gem 'twitter', '~> 5.5.0'
 
 # group :web, :feeder do
 #   gem 'redis', '~> 3.0.6'

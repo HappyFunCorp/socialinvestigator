@@ -22,6 +22,8 @@ html
         ul.nav.pull-right
           li.dropdown
             a.dropdown-toggle data-toggle="dropdown"
+              - if logged_in?
+                = current_user.name
               i.icon-cogs
               b.caret
             ul.dropdown-menu

@@ -9,6 +9,7 @@ require "sinatra/reloader"
 require 'sinatra/twitter-bootstrap'
 
 require_relative 'lib/config'
+require_relative 'lib/models'
 
 require 'omniauth-twitter'
 
@@ -28,6 +29,14 @@ class WebApp < Sinatra::Base
   end
 
   helpers do
+    def logged_in?
+      !session[:screen_name].nil?
+    end
+
+    def current_user
+      User.load(session[:screen_name])
+    end
+
     def protected!
       return if authorized?
       headers['WWW-Authenticate'] = 'Basic realm="Restricted Area"'
@@ -58,16 +67,19 @@ class WebApp < Sinatra::Base
   end
 
   get '/login' do
-    redirect to("/auth/twitter")
+    redirect to("/auth/twitter?x_auth_access_type=write")
   end
 
   get '/auth/twitter/callback' do
     env['omniauth.auth'] ? session[:admin] = true : halt(401,'Not Authorized')
     "You are now logged in"
-    require 'pp'
-    pp env['omniauth.auth']
+    a = env['omniauth.auth']
+    User.update a['info']['nickname'], 
+                a['info']['name'], 
+                a['credentials']['token'],
+                a['credentials']['secret']
+    session[:screen_name] = a['info']['nickname']
     redirect "/"
-    # "<h1>Hi #{env['omniauth.auth']['info']['name']}!</h1><img src='#{env['omniauth.auth']['info']['image']}'>"
   end
 
   get '/auth/failure' do
