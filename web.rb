@@ -67,7 +67,18 @@ class WebApp < Sinatra::Base
   end
 
   get '/login' do
+    session[:access] = :read
+    redirect to("/auth/twitter?x_auth_access_type=read")
+  end
+  
+  get '/login/write' do
+    session[:access] = :write
     redirect to("/auth/twitter?x_auth_access_type=write")
+  end
+
+  get '/login/dm' do
+    session[:access] = :dm
+    redirect to("/auth/twitter?x_auth_access_type=dm")
   end
 
   get '/auth/twitter/callback' do
@@ -79,6 +90,8 @@ class WebApp < Sinatra::Base
                 a['credentials']['token'],
                 a['credentials']['secret']
     session[:screen_name] = a['info']['nickname']
+    require 'pp'
+    pp a
     redirect "/"
   end
 
