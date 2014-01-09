@@ -8,7 +8,7 @@ require_relative 'lib/models'
 require 'pp'
 
 USER="SoInvNet"
-puts "Loading user info for #{USER}"
+puts "Loading user info for #{USER}..."
 si_user = User.load USER
 
 if si_user.token.nil? || si_user.token == ""
@@ -25,7 +25,7 @@ stream = Twitter::Streaming::Client.new do |config|
   # config.auth_method = :oauth
 end
 
-puts "Creating rest client"
+puts "Creating rest client..."
 client = Twitter::REST::Client.new do |config|
   config.consumer_key       = ENV['CONSUMER_KEY']
   config.consumer_secret    = ENV['CONSUMER_SECRET']
@@ -53,9 +53,10 @@ def process_mention( mention )
 end
 
 Thread.new do
+  sleep 10
   puts "Waiting for timeline"
   while true
-    user = REDIS.blpop "timeline"
+    user = REDIS_ALT.blpop "timeline"
     puts "Looking for: #{user}"
   end
 end

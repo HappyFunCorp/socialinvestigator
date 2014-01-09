@@ -15,9 +15,13 @@ VERBOSE = ENV["VERBOSE"] || false
 # end
 
 # db setup
+def new_redis
+  Redis.new(:host => REDIS_URI.host, :port => REDIS_URI.port, :password => REDIS_URI.password)
+end
+
 REDIS_URI = URI.parse(ENV["REDISCLOUD_URL"] || ENV["REDISTOGO_URL"] || ENV["BOXEN_REDIS_URL"] || "redis://localhost:6379")
-# REDIS = Redis.new(:host => REDIS_URI.host, :port => REDIS_URI.port, :password => REDIS_URI.password, :driver => :hiredis)
-REDIS = Redis.new
+REDIS = new_redis
+
 
 # environment checks
 def is_production?
