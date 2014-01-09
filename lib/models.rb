@@ -36,13 +36,15 @@ class Task
   # Queue methods
 
   def self.process_queues
-    Task.queues.each do |queue_name,qclazz|
+    threads = Task.queues.collect do |queue_name,qclazz|
       Thread.start do
         qclazz.process( new_redis )
       end
     end
 
-    sleep 60
+    threads.each do |t|
+      t.join
+    end
   end
 
   def self.process( redis )
@@ -95,13 +97,23 @@ class Task
   def status
     @attrs["status"]
   end
+
+  def user= user
+    REDIS.hmset name, "user", user
+    @attrs['user'] = user
+  end
+
+  def user
+    @attrs["user"]
+  end
   
   def stale?
     status != "loaded" && status != "processing"
   end
 
-  def self.ensure key
+  def self.ensure key, user=nil
     task = load(key)
+    task.user = user
 
     if task.stale?
       if task.status != "queued"
@@ -119,12 +131,28 @@ class Task
   end
 end
 
-class TimelineTask < Task
+class TwitterTask < Task
+  def client
+    if @client.nil?
+      puts "Creating rest client for user #{twitter_user}..."
+
+      ti_user = User.load user
+      client = Twitter::REST::Client.new do |config|
+        config.consumer_key       = ENV['CONSUMER_KEY']
+        config.consumer_secret    = ENV['CONSUMER_SECRET']
+        config.oauth_token        = ti_user.token # ENV['OAUTH_TOKEN']
+        config.oauth_token_secret = ti_user.secret # ENV['OAUTH_TOKEN_SECRET']
+      end
+    end
+
+    @client
+  end
+end
+
+class TimelineTask < TwitterTask
   my_queue "timelines"
 end
 
-class FriendsTask < Task
+class FriendsTask < TwitterTask
   my_queue "friends"
 end
-
-class Word
