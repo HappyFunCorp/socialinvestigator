@@ -1,3 +1,6 @@
+require 'twitter'
+require 'pp'
+
 class User
   attr_accessor :screenname, :name, :token, :secret
   def initialize( screenname, attrs )
@@ -11,7 +14,7 @@ class User
     return nil if screenname.nil? || screenname == ""
     User.new( screenname, REDIS.hgetall( "user:#{screenname}" ))
   end
-  
+
   def update
     self.update @screenname, @name, @token, @secret
   end
@@ -36,25 +39,26 @@ class Task
   # Queue methods
 
   def self.process_queues
-    threads = Task.queues.collect do |queue_name,qclazz|
+    Task.queues.collect do |queue_name,qclazz|
       Thread.start do
         qclazz.process( new_redis )
       end
-    end
-
-    threads.each do |t|
-      t.join
-    end
+    end.each(&:join)
   end
 
   def self.process( redis )
     while true
-      puts "Waiting on #{@queue_name}"
+      puts "#{@queue_name}:Waiting"
       key = redis.blpop @queue_name
       task = queues[key[0]].load key[1]
-      task.status = "processing"
-      if task.process
-        task.status = "loaded"
+      task.redis = redis
+      if task.status == "queued" && task.queued_too_long?
+        task.status = "shed"
+      else
+        task.status = "processing"
+        if task.process
+          task.status = "loaded"
+        end
       end
       # task.notify_watchers
     end
@@ -74,23 +78,24 @@ class Task
   end
 
   # Task Methods
+  attr_accessor :name,:key,:redis
 
   def initialize(queue_name, key)
-    @name = "#{queue_name}:#{key}"
+    @name = "task:#{queue_name}:#{key}"
     @key = key
     @attrs = REDIS.hgetall @name
   end
 
-  def name
-    @name
-  end
-
-  def key
-    @key
+  def redis
+    @redis || REDIS
   end
 
   def status= status
-    REDIS.hmset name, "status", status
+    redis.hmset name, "status", status
+    redis.hmset name, "status_updated", Time.now
+    if status == "loaded"
+      redis.hmset name, "last_loaded", Time.now
+    end
     @attrs['status'] = status
   end
 
@@ -99,16 +104,41 @@ class Task
   end
 
   def user= user
-    REDIS.hmset name, "user", user
+    redis.hmset name, "user", user
     @attrs['user'] = user
   end
 
   def user
     @attrs["user"]
   end
-  
+
+  def last_loaded
+    return Time.parse @attrs['last_loaded'] if @attrs['last_loaded']
+    nil
+  end
+
+  def queued_at
+    return Time.parse @attrs['queued_at'] if @attrs['queued_at']
+    nil
+  end
+
+  def queued_too_long?
+    return true if queued_at.nil?
+    (queued_at||0).to_i > Time.now.to_i + 60*60*1 # 1 hour
+  end
+
   def stale?
-    status != "loaded" && status != "processing"
+    if status == "queued" || status == "processing"
+      return true if Time.now.to_i > (queued_at||0).to_i + 60*30 # 3 Minutes
+    end
+
+    return true if status != "loaded" && status != "processing" && status != "queued"
+
+    if status == "loaded"
+      return true if Time.now.to_i > (last_loaded||0).to_i + 60*60*1 # 1 hour
+    end
+
+    false
   end
 
   def self.ensure key, user=nil
@@ -117,16 +147,32 @@ class Task
 
     if task.stale?
       if task.status != "queued"
-        puts "Queueing the task:#{task.name} on #{queue_name}"
-        REDIS.rpush queue_name, task.key
-        task.status = "queued"
+        queue! task
       end
     end
     task.status
   end
 
+  def self.queue! task
+    task.log "Queueing the task:#{task.name} on #{queue_name}"
+    REDIS.hmset task.name, "queued_at", Time.now
+    REDIS.rpush queue_name, task.key
+    task.status = "queued"
+  end
+
+  def self.requeue key, user=nil
+    task = load key
+    task.user = user
+    queue! task
+    task.status
+  end
+
+  def log string
+    puts "#{@name}:#{string}"
+  end
+
   def process
-    puts "Processing #{@key}"
+    log "Processing #{@key}"
     true
   end
 end
@@ -134,10 +180,11 @@ end
 class TwitterTask < Task
   def client
     if @client.nil?
-      puts "Creating rest client for user #{twitter_user}..."
+      log "Creating rest client for user #{user}..."
 
       ti_user = User.load user
-      client = Twitter::REST::Client.new do |config|
+      pp ti_user
+      @client = Twitter::REST::Client.new do |config|
         config.consumer_key       = ENV['CONSUMER_KEY']
         config.consumer_secret    = ENV['CONSUMER_SECRET']
         config.oauth_token        = ti_user.token # ENV['OAUTH_TOKEN']
@@ -147,12 +194,108 @@ class TwitterTask < Task
 
     @client
   end
-end
 
-class TimelineTask < TwitterTask
-  my_queue "timelines"
+  def handle_too_many_requests
+    retry_count = 0
+    begin
+      ret = yield
+    rescue Twitter::Error::TooManyRequests => error
+      retry_count += 1
+      log "Got TooManyRequests #{retry_count}"
+      if retry_count > 5
+        raise
+      else
+        status="paused"
+        log "Hit rate limit, sleeping for #{error.rate_limit.reset_in}..."
+        sleep error.rate_limit.reset_in
+        status="processing"
+        retry
+      end
+    end
+  end
 end
 
 class FriendsTask < TwitterTask
   my_queue "friends"
+
+  def process
+    twitter_username = key
+    log "Pulling in friends for #{twitter_username}"
+    # in theory, one failed attempt will occur every 15 minutes, so this could be long-running
+    # with a long list of friends
+    num_attempts = 0
+    # client = twitter_client
+    myfile = File.new("#{twitter_username}_friends_list.txt", "w")
+    running_count = 0
+    cursor = -1
+    while (cursor != 0) do
+      begin
+        num_attempts += 1
+        # 200 is max, see https://dev.twitter.com/docs/api/1.1/get/friends/list
+        friends = client.friends(twitter_username, {:cursor => cursor, :count => 200} )
+        friends.each do |f|
+          running_count += 1
+          myfile.puts "\"#{running_count}\",\"#{f.name.gsub('"','\"')}\",\"#{f.screen_name}\",\"#{f.url}\",\"#{f.followers_count}\",\"#{f.location.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.created_at}\",\"#{f.description.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.lang}\",\"#{f.time_zone}\",\"#{f.verified}\",\"#{f.profile_image_url}\",\"#{f.website}\",\"#{f.statuses_count}\",\"#{f.profile_background_image_url}\",\"#{f.profile_banner_url}\""
+        end
+        log "#{running_count} done"
+        cursor = friends.attrs[:next_cursor] #next_cursor
+        break if cursor == 0
+      rescue Twitter::Error::TooManyRequests => error
+        if num_attempts <= max_attempts
+          cursor = friends.next_cursor if friends && friends.next_cursor
+          log "#{running_count} done from rescue block..."
+
+          status="paused"
+          log "Hit rate limit, sleeping for #{error.rate_limit.reset_in}..."
+          sleep error.rate_limit.reset_in
+          status="processing"
+          retry
+        else
+          raise
+        end
+      end
+    end
+
+    myfile.close
+    log "Done"
+    true
+  end
+end
+
+class TimelineTask < TwitterTask
+  my_queue "timelines"
+
+  def process
+    log "Starting timeline task"
+
+    max_id = 0
+    new_tweets = 1
+    added = true
+    while new_tweets > 0 && added
+      log "new_tweets:#{new_tweets}"
+      new_tweets = 0
+      added = false
+      handle_too_many_requests do
+        # log "inside handle_too_many_requests"
+        options={}
+        options[:screen_name] = key
+        options[:count] = 200
+        options[:max_id] = max_id if max_id != 0
+        # log "Printing options"
+        pp options
+        tweets = client.user_timeline options
+        new_tweets = tweets.size
+        log "Got #{new_tweets} tweets"
+        tweets.each do |tweet|
+          added = redis.sadd( "tweets:#{key}", tweet.id ) || added
+          redis.hmset "tweet:#{tweet.id}", "text", tweet.text
+          redis.hmset "tweet:#{tweet.id}", "created_at", tweet.created_at
+          max_id = tweet.id - 1
+        end
+      end
+    end
+
+    log "Finished loading #{key}'s timeline"
+    true
+  end
 end
