@@ -232,44 +232,27 @@ class FriendsTask < TwitterTask
   def process
     twitter_username = key
     log "Pulling in friends for #{twitter_username}"
-    # in theory, one failed attempt will occur every 15 minutes, so this could be long-running
-    # with a long list of friends
-    num_attempts = 0
-    # client = twitter_client
-    myfile = File.new("#{twitter_username}_friends_list.txt", "w")
-    running_count = 0
     cursor = -1
     while (cursor != 0) do
-      begin
-        num_attempts += 1
-        # 200 is max, see https://dev.twitter.com/docs/api/1.1/get/friends/list
+      handle_too_many_requests do 
         friends = client.friends(twitter_username, {:cursor => cursor, :count => 200} )
         friends.each do |f|
-          running_count += 1
-          myfile.puts "\"#{running_count}\",\"#{f.name.gsub('"','\"')}\",\"#{f.screen_name}\",\"#{f.url}\",\"#{f.followers_count}\",\"#{f.location.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.created_at}\",\"#{f.description.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.lang}\",\"#{f.time_zone}\",\"#{f.verified}\",\"#{f.profile_image_url}\",\"#{f.website}\",\"#{f.statuses_count}\",\"#{f.profile_background_image_url}\",\"#{f.profile_banner_url}\""
+          redis.sadd "friends:#{key}", f.screenname
+          # running_count += 1
+          # myfile.puts "\"#{running_count}\",\"#{f.name.gsub('"','\"')}\",\"#{f.screen_name}\",\"#{f.url}\",\"#{f.followers_count}\",\"#{f.location.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.created_at}\",\"#{f.description.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.lang}\",\"#{f.time_zone}\",\"#{f.verified}\",\"#{f.profile_image_url}\",\"#{f.website}\",\"#{f.statuses_count}\",\"#{f.profile_background_image_url}\",\"#{f.profile_banner_url}\""
         end
         log "#{running_count} done"
         cursor = friends.attrs[:next_cursor] #next_cursor
         break if cursor == 0
-      rescue Twitter::Error::TooManyRequests => error
-        if num_attempts <= max_attempts
-          cursor = friends.next_cursor if friends && friends.next_cursor
-          log "#{running_count} done from rescue block..."
-
-          status="paused"
-          log "Hit rate limit, sleeping for #{error.rate_limit.reset_in}..."
-          sleep error.rate_limit.reset_in
-          status="processing"
-          retry
-        else
-          raise
-        end
       end
     end
 
-    myfile.close
     log "Done"
     true
+  end
+
+  def data
+    redis.smembers( "friends:#{key}" ).sort
   end
 end
 
@@ -278,6 +261,7 @@ class TimelineTask < TwitterTask
 
   def process
     log "Starting timeline task"
+    earliest = Time.now.to_i - 6*30*24*60*60
 
     max_id = 0
     new_tweets = 1
@@ -298,10 +282,15 @@ class TimelineTask < TwitterTask
         new_tweets = tweets.size
         log "Got #{new_tweets} tweets"
         tweets.each do |tweet|
-          added = redis.sadd( "tweets:#{key}", tweet.id ) || added
-          redis.hmset "tweet:#{tweet.id}", "text", tweet.text
-          redis.hmset "tweet:#{tweet.id}", "created_at", tweet.created_at
-          max_id = tweet.id - 1
+          if tweet.created_at.to_i > earliest
+            added = redis.sadd( "tweets:#{key}", tweet.id ) || added
+            redis.hmset "tweet:#{tweet.id}", "text", tweet.text
+            redis.hmset "tweet:#{tweet.id}", "created_at", tweet.created_at
+            max_id = tweet.id - 1
+          else
+            log "Skipping old tweets"
+            added = false
+          end
         end
       end
     end

@@ -115,4 +115,16 @@ class WebApp < Sinatra::Base
     content_type :json
     ret.to_json
   end
+
+  get '/friends.json' do
+    ret = {}
+    if logged_in?
+      ret = FriendsTask.data session[:screen_name], session[:screen_name]
+    else
+      ret[:status] = "not_logged_in"
+    end
+
+    content_type :json
+    ret.to_json
+  end
 end
