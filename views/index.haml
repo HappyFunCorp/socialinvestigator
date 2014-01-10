@@ -1,0 +1,22 @@
+.row
+  .col-lg-12
+    %h1 Hello there
+
+    - if !logged_in?
+      %a{ :href=>"/login" } Login
+
+- if logged_in?
+  .row
+    .col-sm-4
+      %h2 Friends
+
+      %p#friend_status asdf
+
+      %ul#friends
+
+    .col-sm-8
+      %h2 Timeline
+
+      %p#timeline_status asdf
+
+      %ul#timeline

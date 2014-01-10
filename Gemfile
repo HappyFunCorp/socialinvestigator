@@ -4,7 +4,7 @@ ruby '2.0.0'
 gem 'sinatra', '~> 1.4.4'
 gem 'sinatra-contrib'
 
-gem 'slim'
+gem 'haml'
 gem 'coffee-script'
 gem 'sass', :require => 'sass'
 gem 'rack-cache'

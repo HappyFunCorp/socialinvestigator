@@ -1,5 +1,5 @@
 require 'sinatra/base'
-require 'slim'
+require 'haml'
 require 'coffee-script'
 require 'sass'
 require 'tilt'
@@ -59,7 +59,12 @@ class WebApp < Sinatra::Base
   get '/' do
     cache_control :public, max_age: 600  # 10 mins. #disable until password is gone
     # protected! if ENV['RACK_ENV'] == 'production'
-    slim :index
+    haml :index
+  end
+
+  get '/application.js' do
+    cache_control :public, max_age: 600  # 10 mins.
+    coffee :application
   end
 
   get '/stats' do
@@ -91,11 +96,23 @@ class WebApp < Sinatra::Base
                 a['credentials']['secret']
     session[:screen_name] = a['info']['nickname']
     require 'pp'
-    pp a
+    # pp a
     redirect "/"
   end
 
   get '/auth/failure' do
     params[:message]
+  end
+
+  get '/timeline.json' do
+    ret = {}
+    if logged_in?
+      ret = TimelineTask.data session[:screen_name], session[:screen_name]
+    else
+      ret[:status] = "not_logged_in"
+    end
+
+    content_type :json
+    ret.to_json
   end
 end

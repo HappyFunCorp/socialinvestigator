@@ -153,6 +153,17 @@ class Task
     task.status
   end
 
+  def self.data key, user=nil
+    self.ensure key, user
+
+    task = load(key)
+    { status: task.status, data: task.data}
+  end
+
+  def data
+    []
+  end
+
   def self.queue! task
     task.log "Queueing the task:#{task.name} on #{queue_name}"
     REDIS.hmset task.name, "queued_at", Time.now
@@ -297,5 +308,18 @@ class TimelineTask < TwitterTask
 
     log "Finished loading #{key}'s timeline"
     true
+  end
+
+  def data
+    earliest = Time.now.to_i - 6*30*24*60*60
+
+    redis.smembers( "tweets:#{key}" ).collect do |id|
+      redis.hgetall "tweet:#{id}"
+    end.select do |x|
+      x['created_at'] = Time.parse x['created_at']
+      x['created_at'].to_i > earliest
+    end.sort do |b,a|
+      a['created_at'].to_i <=> b['created_at'].to_i
+    end
   end
 end
