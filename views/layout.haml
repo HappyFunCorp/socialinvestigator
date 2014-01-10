@@ -6,15 +6,21 @@
 
     %script{ :src=>'//ajax.googleapis.com/ajax/libs/jquery/2.0.2/jquery.min.js', :type=>'text/javascript' }
     %script{ :src=>"//ajax.googleapis.com/ajax/libs/angularjs/1.2.7/angular.min.js", :type=>"text/javascript" }
+    %script{ :src=>"//ajax.googleapis.com/ajax/libs/angularjs/1.2.7/angular-route.min.js", :type=>"text/javascript" }
     %script{ :src=>"//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js", :type=>"text/javascript" }
     %link{ :href=>"//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css", :rel=>'stylesheet' }
     %link{ :href=>"//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap-theme.min.css", :rel=>'stylesheet' }
 
     /actual application stuff here
     / link :href=>'/assets/main.css', :rel=>'stylesheet'
+    %script{ :type => "text/javascript" }
+      - if logged_in?
+        logged_in = true
+      - else
+        logged_in = false
     %script{ :src=>'/application.js' }
 
-  %body{ "ng-app" => true }
+  %body{ "ng-app" => "socialinvestigator" }
     .navbar
       .container
         %a.navbar-brand{ :href=>"/" } SocialInvestigator
@@ -47,19 +53,21 @@
       %br
       %br
 
-    #aboutview.modal.hide.fade{ :tabindex=>"-1", :role=>"dialog", "aria-labelledby"=>"myModalLabel", "aria-hidden"=>"true" }
-      .modal-header
-        %button.close{ :type=>"button", "data-dismiss"=>"modal", "aria-hidden"=>"true" } &times;
-        %h3 about SocialInvestigator
-      .modal-body
-        %p this is an experiment in AWESOMENESS
+    #aboutview.modal.fade{ :tabindex=>"-1", :role=>"dialog", "aria-labelledby"=>"myModalLabel", "aria-hidden"=>"true" }
+      .modal-dialog
+        .modal-content
+          .modal-header
+            %button.close{ :type=>"button", "data-dismiss"=>"modal", "aria-hidden"=>"true" } &times;
+            %h3 about SocialInvestigator
+          .modal-body
+            %p this is an experiment in AWESOMENESS
 
-        %h4 like it? spread the word!
-        %p
-          %a.twitter-share-button{ :href=>"https://twitter.com/share", "data-lang"=>"en", "data-count"=>"horizontal", "data-related"=>"wschenk,bschippers,happyfuncorp", "data-dnt"=>"true", "data-text"=>"SocialInvestigator: social titalation on twitter", "data-url"=>"http://www.SocialInvestigator.net/" } Tweet
-          %a.twitter-follow-button{ :href=>"https://twitter.com/wschenk", "data-show-count"=>"false", "data-show-screen-name"=>"true", "data-dnt"=>"true"} Follow @wschenk
-      .modal-footer
-        %span#byline 
-          built with love in nyc.  this is a 
-          %a{ :href=>"http://happyfuncorp.com", :target=>"new"} HappyFunCorp
-          project.
+            %h4 like it? spread the word!
+            %p
+              %a.twitter-share-button{ :href=>"https://twitter.com/share", "data-lang"=>"en", "data-count"=>"horizontal", "data-related"=>"wschenk,bschippers,happyfuncorp", "data-dnt"=>"true", "data-text"=>"SocialInvestigator: social titalation on twitter", "data-url"=>"http://www.SocialInvestigator.net/" } Tweet
+              %a.twitter-follow-button{ :href=>"https://twitter.com/wschenk", "data-show-count"=>"false", "data-show-screen-name"=>"true", "data-dnt"=>"true"} Follow @wschenk
+          .modal-footer
+            %span#byline 
+              built with love in nyc.  this is a 
+              %a{ :href=>"http://happyfuncorp.com", :target=>"new"} HappyFunCorp
+              project.

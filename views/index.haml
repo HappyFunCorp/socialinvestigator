@@ -1,22 +1,30 @@
-.row
+.row{ "ng-hide" => "logged_in" }
   .col-lg-12
     %h1 Hello there
 
-    - if !logged_in?
-      %a{ :href=>"/login" } Login
+    %a{ :href=>"/login" } Login
 
-- if logged_in?
-  .row
-    .col-sm-4
-      %h2 Friends
 
-      %p#friend_status asdf
+.row{ "ng-show" => "logged_in", "ng-controller" => "DashboardController" }
+  .col-sm-4{ "ng-controller" => "FriendsController" }
+    %h2
+      Friends
+      %button.button.pull-right{ "ng-click"=>"refresh()" } Refresh
 
-      %ul#friends
+    %p#friend_status {{ status }}
 
-    .col-sm-8
-      %h2 Timeline
+    %ul#friends
+      %li{ "ng-repeat" => "friend in data"}
+        %a{"ng-click" => "show_user(friend)"} {{ friend }}
 
-      %p#timeline_status asdf
+  .col-sm-8{ "ng-controller" => "TimelineController" }
+    %h2
+      Timeline: {{user}}
+      %button.button.pull-right{ "ng-click"=>"refresh()" } Refresh
 
-      %ul#timeline
+    %p#timeline_status {{ status }}
+
+    %ul#timeline
+      %li{ "ng-repeat"=>"tweet in data"}
+        %span.created_at {{ tweet.created_at | date }}
+        %span.tweet {{ tweet.text }}

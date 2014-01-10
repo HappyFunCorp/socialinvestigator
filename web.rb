@@ -6,7 +6,7 @@ require 'tilt'
 require 'rack-cache'
 require 'oj'
 require "sinatra/reloader"
-require 'sinatra/twitter-bootstrap'
+# require 'sinatra/twitter-bootstrap'
 
 require_relative 'lib/config'
 require_relative 'lib/models'
@@ -14,7 +14,7 @@ require_relative 'lib/models'
 require 'omniauth-twitter'
 
 class WebApp < Sinatra::Base
-  register Sinatra::Twitter::Bootstrap::Assets
+  # register Sinatra::Twitter::Bootstrap::Assets
 
   configure :development do
     register Sinatra::Reloader
@@ -25,7 +25,7 @@ class WebApp < Sinatra::Base
   # end
 
   configure do
-    enable :sessions
+    enable :sessions, :logging
   end
 
   helpers do
@@ -67,8 +67,13 @@ class WebApp < Sinatra::Base
     coffee :application
   end
 
-  get '/stats' do
-    REDIS.keys("queue:*")
+  get '/stats.json' do
+    content_type :json
+    Task.queues.keys.collect do |k|
+      r = REDIS.hgetall("#{k}:status")
+      r['count'] = REDIS.llen k
+      { k => r }
+    end.to_json
   end
 
   get '/login' do
@@ -107,7 +112,13 @@ class WebApp < Sinatra::Base
   get '/timeline.json' do
     ret = {}
     if logged_in?
-      ret = TimelineTask.data session[:screen_name], session[:screen_name]
+      user = params[:screen_name] || session[:screen_name]
+      if params[:force]
+        puts "Requeueing..."
+        TimelineTask.requeue user, session[:screen_name]
+      end
+
+      ret = TimelineTask.data user, session[:screen_name]
     else
       ret[:status] = "not_logged_in"
     end
@@ -119,7 +130,13 @@ class WebApp < Sinatra::Base
   get '/friends.json' do
     ret = {}
     if logged_in?
-      ret = FriendsTask.data session[:screen_name], session[:screen_name]
+      user = params[:screen_name] || session[:screen_name]
+      if params[:force]
+        puts "Requeueing..."
+
+        FriendsTask.requeue user, session[:screen_name]
+      end
+      ret = FriendsTask.data user, session[:screen_name]
     else
       ret[:status] = "not_logged_in"
     end

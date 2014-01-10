@@ -49,7 +49,11 @@ class Task
   def self.process( redis )
     while true
       puts "#{@queue_name}:Waiting"
+      queue_status "status", "waiting"
+      queue_status "job", ""
       key = redis.blpop @queue_name
+      queue_status "status", "running"
+      queue_status "job", key[1]
       task = queues[key[0]].load key[1]
       task.redis = redis
       if task.status == "queued" && task.queued_too_long?
@@ -77,11 +81,22 @@ class Task
     new(@queue_name,key)
   end
 
+  def self.queue_status status, value
+    puts "self #{@queue_name}:status #{status} #{value}"
+    REDIS.hmset "#{@queue_name}:status", status, value
+  end
+
+  def queue_status status, value
+    puts "     #{@queue_name}:status #{status} #{value}"
+    redis.hmset "#{@queue_name}:status", status, value
+  end
+
   # Task Methods
   attr_accessor :name,:key,:redis
 
   def initialize(queue_name, key)
     @name = "task:#{queue_name}:#{key}"
+    @queue_name = queue_name
     @key = key
     @attrs = REDIS.hgetall @name
   end
@@ -218,7 +233,12 @@ class TwitterTask < Task
       else
         status="paused"
         log "Hit rate limit, sleeping for #{error.rate_limit.reset_in}..."
+        queue_status "reset_at", error.rate_limit.reset_at
+        queue_status "status", "paused"
+        redis.rpush @queue_name, key
         sleep error.rate_limit.reset_in
+        queue_status "status", "in_job"
+        queue_status "reset_at", ""
         status="processing"
         retry
       end
@@ -236,12 +256,13 @@ class FriendsTask < TwitterTask
     while (cursor != 0) do
       handle_too_many_requests do 
         friends = client.friends(twitter_username, {:cursor => cursor, :count => 200} )
+        running_count = 0
         friends.each do |f|
-          redis.sadd "friends:#{key}", f.screenname
-          # running_count += 1
+          redis.sadd "friends:#{key}", f.screen_name
+          running_count += 1
           # myfile.puts "\"#{running_count}\",\"#{f.name.gsub('"','\"')}\",\"#{f.screen_name}\",\"#{f.url}\",\"#{f.followers_count}\",\"#{f.location.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.created_at}\",\"#{f.description.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.lang}\",\"#{f.time_zone}\",\"#{f.verified}\",\"#{f.profile_image_url}\",\"#{f.website}\",\"#{f.statuses_count}\",\"#{f.profile_background_image_url}\",\"#{f.profile_banner_url}\""
         end
-        log "#{running_count} done"
+        log "#{running_count} loaded"
         cursor = friends.attrs[:next_cursor] #next_cursor
         break if cursor == 0
       end
@@ -288,7 +309,7 @@ class TimelineTask < TwitterTask
             redis.hmset "tweet:#{tweet.id}", "created_at", tweet.created_at
             max_id = tweet.id - 1
           else
-            log "Skipping old tweets"
+            # log "Skipping old tweets"
             added = false
           end
         end

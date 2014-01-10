@@ -1,33 +1,59 @@
-loadTimeline = ->
-  console.log "Looking up timeline"
-  $.get( "/timeline.json" ).done( (data)->
-    console.log data
+app = angular.module( "socialinvestigator", ['ngRoute'] )
 
-    $("#timeline_status").html( data.status )
-    if data.status == 'loaded'
-      $("#timeline").html ""
-      for tweet in data.data
-        $("#timeline").append( "<li><span class='date'>"+tweet.created_at+"</span>:<span class='tweet'>" + tweet.text + "</span></li>")
-    else
-      console.log "Waiting"
-      setTimeout loadTimeline, 2000
-  )
+app.run( ["$rootScope", ($rootScope) ->
+  $rootScope.logged_in = window.logged_in
+] )
 
-loadFriends = ->
-  console.log "Looking up friends"
-  $.get( "/friends.json" ).done( (data)->
-    console.log data
+class DataLoader
+  constructor: (@endpoint, @http, @timeout) ->
+    console.log "Creating dataloader:" + @endpoint
+    # @scope.$watch "user", -> @load()
+    @data = []
 
-    $("#friends_status").html( data.status )
-    if data.status == 'loaded'
-      $("#friends").html ""
-      for tweet in data.data
-        $("#friends").append( "<li><span class='user'>"+tweet+"</span>" )
-    else
-      console.log "Waiting"
-      setTimeout loadFriends, 2000
-  )
+  scope: (@s) ->
+    @s.status = "Loading..."
+    @s.data = []
+    @s.$watch "user", => @load()
+    @load()
 
-$ ->
-  loadTimeline()
-  loadFriends()
+  load: ->
+    if @poll
+      console.log "Killing old poll"
+      @timeout.cancel @poll
+    console.log "Calling load: " + @s.user
+    params = {}
+    params.screen_name = @s.user if @s.user
+    @http.get( @endpoint, {params: params } ).success (data) =>
+      @s.status = data.status
+      @s.data = data.data
+      console.log @endpoint+":"+data.status
+      if data.status != "loaded"
+        @poll = @timeout(
+          =>
+            @poll = null 
+            @load()
+          ,
+          2000
+          )
+
+app.service 'Timeline', [ '$http', '$timeout', ($http, $timeout) ->
+  new DataLoader( '/timeline.json', $http, $timeout )
+]
+
+app.service 'Friends', [ '$http', '$timeout', ($http, $timeout) ->
+  new DataLoader( '/friends.json', $http, $timeout )
+]
+
+@DashboardController = ["$scope", "$http", "$timeout", ($scope, $http, $timeout) ->
+  $scope.user = null
+  $scope.show_user = (user) ->
+    $scope.user = user
+]
+
+@TimelineController = ["$scope", "Timeline", ($scope, Timeline) ->
+  Timeline.scope( $scope )
+]
+
+@FriendsController = ["$scope", "Friends", ($scope, Friends) ->
+  Friends.scope( $scope )
+]
