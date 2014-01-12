@@ -1,5 +1,13 @@
 app = angular.module( "socialinvestigator", ['ngRoute','d3'] )
 
+
+app.config ['$routeProvider', ($routeProvider) ->
+  $routeProvider.
+    when( '/user/:user', { templateUrl: '/user.html', controller: "UserController" } ).
+    when( '/home', { templateUrl: '/home.html', controller: "HomeController" } ).
+    otherwise({ redirectTo: '/home' })
+]
+
 app.directive "wordcloud2", [ ->
   restrict: 'E'
   scope:
@@ -90,52 +98,73 @@ app.run( ["$rootScope", ($rootScope) ->
 ] )
 
 class DataLoader
-  constructor: (@endpoint, @http, @timeout) ->
+  constructor: (@endpoint, @http, @timeout, @location) ->
     console.log "Creating dataloader:" + @endpoint
     # @scope.$watch "user", -> @load()
     @data = []
+    @delay = 1000
 
   scope: (@s) ->
     @s.status = "Loading..."
     @s.data = []
-    @s.$watch "user", => @load()
-    @load()
+    @s.$watch "user", (newData) => 
+      @delay = 1000
+      @load(newData)
+    @load(@s.user)
 
-  load: ->
-    if !@s.logged_in
-      console.log "Not logged in"
-      return
+  load: (user)->
     if @poll
       console.log "Killing old poll"
       @timeout.cancel @poll
-    console.log "Calling load: " + @s.user
+    console.log "Calling load: " + user
     params = {}
-    params.screen_name = @s.user if @s.user
+    params.screen_name = user if user
     @http.get( @endpoint, {params: params } ).success (data) =>
       @s.status = data.status
       @s.data = data.data
       console.log @endpoint+":"+data.status
-      if data.status != "loaded"
+      if data.status != "loaded" && data.status != "not_logged_in"
         @poll = @timeout(
           =>
             @poll = null 
-            @load()
+            @load(user)
           ,
-          2000
+          @delay
           )
+        @delay *= 2
+      else
+        @delay = 1000
 
-app.service 'Timeline', [ '$http', '$timeout', ($http, $timeout) ->
-  new DataLoader( '/timeline.json', $http, $timeout )
+app.service 'Timeline', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
+  new DataLoader( '/timeline.json', $http, $timeout, $location )
 ]
 
-app.service 'Friends', [ '$http', '$timeout', ($http, $timeout) ->
-  new DataLoader( '/friends.json', $http, $timeout )
+app.service 'WordCloud', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
+  new DataLoader( '/wordcloud.json', $http, $timeout, $location )
 ]
 
-@DashboardController = ["$scope", "$http", "$timeout", ($scope, $http, $timeout) ->
-  $scope.user = null
+app.service 'Friends', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
+  new DataLoader( '/friends.json', $http, $timeout, $location )
+]
+
+@DashboardController = ["$scope", "$http", "$location", ($scope, $http, $location) ->
+  $scope.whoami = "Anonymous"
+
+  $http.get( "/whoami.json" ).success (data) =>
+    $scope.whoami = data.screen_name
+    $location.path( "/user/" + $scope.whoami ) if $scope.whoami
+
   $scope.show_user = (user) ->
-    $scope.user = user
+    $location.path( "/user/" + user )
+]
+
+@HomeController = ["$scope",($scope) ->
+  console.log "Home Controller"
+]
+
+@UserController = ["$scope","$routeParams", ($scope,$routeParams) ->
+  console.log "User is:"+$routeParams.user
+  $scope.user = $routeParams.user
 ]
 
 @TimelineController = ["$scope", "Timeline", ($scope, Timeline) ->

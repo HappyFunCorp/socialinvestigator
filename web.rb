@@ -6,6 +6,7 @@ require 'tilt'
 require 'rack-cache'
 require 'oj'
 require "sinatra/reloader"
+require 'pp'
 # require 'sinatra/twitter-bootstrap'
 
 require_relative 'lib/config'
@@ -57,14 +58,23 @@ class WebApp < Sinatra::Base
   set :static_cache_control, [:public, max_age: 60000] # 1000 mins.
 
   get '/' do
-    cache_control :public, max_age: 600  # 10 mins. #disable until password is gone
+    # cache_control :public, max_age: 600  # 10 mins. #disable until password is gone
     # protected! if ENV['RACK_ENV'] == 'production'
     haml :index
+  end
+
+  get '/*.html' do
+    haml params[:splat].first.to_sym
   end
 
   get '/application.js' do
     cache_control :public, max_age: 600  # 10 mins.
     coffee :application
+  end
+
+  get '/whoami.json' do
+    content_type :json
+    { "screen_name" => session[:screen_name] }.to_json
   end
 
   get '/stats.json' do
@@ -100,7 +110,6 @@ class WebApp < Sinatra::Base
                 a['credentials']['token'],
                 a['credentials']['secret']
     session[:screen_name] = a['info']['nickname']
-    require 'pp'
     # pp a
     redirect "/"
   end
@@ -137,6 +146,24 @@ class WebApp < Sinatra::Base
         FriendsTask.requeue user, session[:screen_name]
       end
       ret = FriendsTask.data user, session[:screen_name]
+    else
+      ret[:status] = "not_logged_in"
+    end
+
+    content_type :json
+    ret.to_json
+  end
+
+  get '/words.json' do
+    ret = {}
+    if logged_in?
+      user = params[:screen_name] || session[:screen_name]
+      if params[:force]
+        puts "Requeueing..."
+
+        TimelineTask.requeue user, session[:screen_name]
+      end
+      ret = TimelineTask.data user, session[:screen_name]
     else
       ret[:status] = "not_logged_in"
     end

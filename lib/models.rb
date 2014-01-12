@@ -65,7 +65,9 @@ class Task
       queue_status "job", key[1]
       task = queues[key[0]].load key[1]
       task.redis = redis
-      if task.status == "queued" && task.queued_too_long?
+      if Time.now.to_i < (task.last_loaded||0).to_i + 60*60*15 # 15 Minutes
+        task.status="shed"
+      elsif task.status == "queued" && task.queued_too_long?
         task.status = "shed"
       else
         task.status = "processing"
@@ -91,12 +93,12 @@ class Task
   end
 
   def self.queue_status status, value
-    puts "self #{@queue_name}:status #{status} #{value}"
+    # puts "self #{@queue_name}:status #{status} #{value}"
     REDIS.hmset "#{@queue_name}:status", status, value
   end
 
   def queue_status status, value
-    puts "     #{@queue_name}:status #{status} #{value}"
+    # puts "     #{@queue_name}:status #{status} #{value}"
     redis.hmset "#{@queue_name}:status", status, value
   end
 
@@ -153,13 +155,13 @@ class Task
 
   def stale?
     if status == "queued" || status == "processing"
-      return true if Time.now.to_i > (queued_at||0).to_i + 60*30 # 3 Minutes
+      return true if Time.now.to_i > (queued_at||0).to_i + 60*30 # 30 Minutes
     end
 
     return true if status != "loaded" && status != "processing" && status != "queued"
 
     if status == "loaded"
-      return true if Time.now.to_i > (last_loaded||0).to_i + 60*60*1 # 1 hour
+      return true if Time.now.to_i > (last_loaded||0).to_i + 60*60*4 # 4 hours
     end
 
     false
@@ -218,7 +220,7 @@ class TwitterTask < Task
       log "Creating rest client for user #{user}..."
 
       ti_user = User.load user
-      pp ti_user
+      # pp ti_user
       @client = Twitter::REST::Client.new do |config|
         config.consumer_key       = ENV['CONSUMER_KEY']
         config.consumer_secret    = ENV['CONSUMER_SECRET']
