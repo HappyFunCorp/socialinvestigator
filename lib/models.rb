@@ -29,6 +29,15 @@ class User
       REDIS.hmset key, "secret", secret
     end
   end
+
+  def twitter_client
+    @twitter_client ||= Twitter::REST::Client.new do |config|
+        config.consumer_key       = ENV['CONSUMER_KEY']
+        config.consumer_secret    = ENV['CONSUMER_SECRET']
+        config.oauth_token        = self.token # ENV['OAUTH_TOKEN']
+        config.oauth_token_secret = self.secret # ENV['OAUTH_TOKEN_SECRET']
+    end
+  end
 end
 
 class Task

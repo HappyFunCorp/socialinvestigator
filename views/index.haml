@@ -4,6 +4,7 @@
 
     %a{ :href=>"/login" } Login
 
+    %wordcloud{ words: "words" }
 
 .row{ "ng-show" => "logged_in", "ng-controller" => "DashboardController" }
   .col-sm-4{ "ng-controller" => "FriendsController" }
