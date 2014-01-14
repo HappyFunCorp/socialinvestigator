@@ -1,62 +1,158 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Title</title>
+    <title>About</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <style type="text/css">
-      /* Slideshow styles */
-            /* Two-column layout */
-      .left-column {
-        color: #777;
-        width: 20%;
-        height: 92%;
-        float: left;
-      }
-        .left-column h2:last-of-type, .left-column h3:last-child {
-          color: #000;
-        }
-      .right-column {
-        width: 75%;
-        float: right;
-        padding-top: 2em;
-      }
-    </style>
+    <link href="about.css" rel="stylesheet"/>
   </head>
   <body>
     <textarea id="source">
+class: center, middle, inverse
 
-class: center, middle
+# HappyFunCorp Codex
 
-# Social Investigator
-
+.footnote[Go to directly to [happyfuncorp](http://happyfuncorp.com)]
 
 ---
-layout:false
+class: center, middle, inverse
+
+# We build software
+## This is what we know
+
+---
+class: center, middle, inverse
+
+# We don't know all the answers
+## We want to figure it out
+
+---
+class: center,middle, inverse
+
+## Virtuous Triangles
+
+# Needs
+# Wants
+# Tactics
+
+---
+class: center,middle, inverse
+
+## Virtuous Triangles
+# Product
+# Business
+# Technology
+---
+class: center,middle, inverse
+
+## Virtuous Triangles
+# Design
+# Management
+# Engineering
+
+---
+
+class: center,middle, inverse
+
+# Lets talk about it
+## This is what we know
+
+---
+layout: false
 
 .left-column[
-  ## Agenda
+## community
 ]
-.right-column[
-  # Social Investigator
 
-  This is really great stuff.
+.right-column[
+# Talk amongsts yourselves
+
+```
+def is_expert?( id )
+  REDIS.sismember "friends", id
+end
+
+def invite_friend( id, friend )
+  if is_expert?( id )
+    REDIS.sadd "friends", friend
+  end
+end
+```
+
+The HappyFunCorp community is composed of experts, who do this for a living, who can tell who is knowledgable and who is full is shit.
+
+We want to get everyone together -- friends, collegues, clients -- to share tips and expertise with each other.
 ]
 ---
-layout:false
+layout: false
 
 .left-column[
-  ## Agenda
-  ## Sexytime
+## community
+## irl
 ]
-.right-column[
-  # So good, right?
 
-  This is really great stuff.
+.right-column[
+# Mi casa es su casa
+
+Come on down for some food, drink, and to hear what's up.  Twice a month we are going to meet and have a few people present 5-10 minutes on a subject, open up the floor and go deep.
+
+Everything around the business of software is on the table.  From product pitches, to talks about methodology, or coding trips, we want designers, engineers and enterpreures to share what they know.
+
+```
+def 8th_rule_of_fight_club
+  if first_night_at_hfc?
+    "You HAVE to present"
+  end
+end
+```
 ]
 ---
+layout: false
 
+.left-column[
+## community
+## irl
+## codex
+]
 
-# Introduction
+.right-column[
+# codex.happyfuncorp.com
+
+...and if you can't make it, you can still see what's going on.  codex.happyfuncorp.com is where all information gets posted, people can request information about a given topic.  A repository for the ages of
+
+- presentations
+
+- white papers
+
+- cool apps
+
+- idle musings
+]
+
+---
+layout: false
+
+.left-column[
+## community
+## irl
+## codex
+## calendar
+]
+
+.right-column[
+# HFC World HQ
+## 1st & 3rd Friday of the Month
+- 18 Bridge St #3A
+
+- Dumbo
+
+- F train to Jay St
+
+- Beer & Burbon provided.
+]
+---
+class: center,middle, inverse
+
+# Think happy thoughts!
 
     </textarea>
     <script src="http://gnab.github.io/remark/downloads/remark-0.5.5.min.js" type="text/javascript">
