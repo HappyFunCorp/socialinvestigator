@@ -1,3 +1,4 @@
+require 'twitter'
 require_relative 'task'
 require_relative 'user'
 
@@ -40,7 +41,8 @@ class TwitterTask < Task
         status="processing"
         retry
       end
-    rescue Error => e
+    rescue e
+      log e
       raise e
     end
 
@@ -83,7 +85,7 @@ class TimelineTask < TwitterTask
 
   def process
     log "Starting timeline task"
-    earliest = Time.now.to_i - 6*30*24*60*60
+    earliest = Time.now.to_i - 12*30*24*60*60 # 1 year
 
     max_id = 0
     new_tweets = 1
@@ -152,9 +154,28 @@ class WordcloudTask < TwitterTask
 
     if t == 'loaded'
       log "Processing wordcloud task"
+
+      task = TimelineTask.load key
+
+      data = task.data
+
+      set = "wordcloud:#{key}"
+      redis.del set
+      data.each do |tweet|
+        words = tweet["text"].gsub( /[\(\)\.,"-:’\|…]*/, "" ).downcase.split.each do |word|
+          unless redis.sismember "stopwords", word
+            redis.zincrby set, 1, word
+          end
+        end
+      end
     end
 
     log "Ending wordcloud task"
     true
+  end
+
+  def data
+    redis.zrevrange "wordcloud:#{key}", 0, 100,  {:with_scores=>true}
+    # c.Do("ZREVRANGE", word_key, "0", "50", "WITHSCORES"))
   end
 end

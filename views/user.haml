@@ -10,14 +10,16 @@
       %li{ "ng-repeat" => "friend in data"}
         %a{"ng-click" => "show_user(friend)"} {{ friend }}
 
-  .col-sm-8{ "ng-controller" => "TimelineController" }
+  .col-sm-8{ "ng-controller" => "WordcloudController" }
     %h2
       Timeline: {{user}}
       %button.button.pull-right{ "ng-click"=>"refresh()" } Refresh
 
     %p#timeline_status {{ status }}
 
+    %wordcloud{ words: "data"}
+
     %ul#timeline
-      %li{ "ng-repeat"=>"tweet in data"}
-        %span.created_at {{ tweet.created_at | date }}
-        %span.tweet {{ tweet.text }}
+      %li{ "ng-repeat"=>"word in data"}
+        %span.created_at {{ word[1] | number }}
+        %span.tweet {{ word[0] }}

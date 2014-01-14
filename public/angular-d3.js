@@ -9550,10 +9550,10 @@ angular.module('d3').directive('wordcloud', [
             width,
             height
           ]).words(words.map(function (d) {
-            console.log( "Returning size: " + (d[0]+fontSize) )
+            // console.log( "Returning size: " + (d[1]*3 + fontSize) )
             return {
-              text: d[1],
-              size: d[0]*3 + fontSize // Math.random() * fontSize
+              text: d[0],
+              size: d[1]*3 + fontSize // Math.random() * fontSize
             };
           })).rotate(function () {
             return ~~(Math.random() * 2) * -90;
@@ -9582,6 +9582,15 @@ angular.module('d3').directive('wordcloud', [
             });
           }
         };
+        scope.$watch( 'words', function( newData, oldData ) {
+          console.log( "Resetting the word cloud" );
+          console.log( newData );
+          words = newData;
+          if( words ) {
+            element.text('');
+            cloudFactory(words);
+          }
+        } )
         cloudFactory(words);
       }
     };

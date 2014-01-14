@@ -154,16 +154,16 @@ class WebApp < Sinatra::Base
     ret.to_json
   end
 
-  get '/words.json' do
+  get '/wordcloud.json' do
     ret = {}
     if logged_in?
       user = params[:screen_name] || session[:screen_name]
       if params[:force]
         puts "Requeueing..."
 
-        TimelineTask.requeue user, session[:screen_name]
+        WordcloudTask.requeue user, session[:screen_name]
       end
-      ret = TimelineTask.data user, session[:screen_name]
+      ret = WordcloudTask.data user, session[:screen_name]
     else
       ret[:status] = "not_logged_in"
     end

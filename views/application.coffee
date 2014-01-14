@@ -94,7 +94,7 @@ app.directive "wordcloud2", [ ->
 
 app.run( ["$rootScope", ($rootScope) ->
   $rootScope.logged_in = window.logged_in
-  $rootScope.words = [[20,"This"],[15,"That"],[10,"Other"]]
+  $rootScope.words = [["This",20],["That",15],["Other",10]]
 ] )
 
 class DataLoader
@@ -121,8 +121,9 @@ class DataLoader
     params.screen_name = user if user
     @http.get( @endpoint, {params: params } ).success (data) =>
       @s.status = data.status
+      # console.log data.data
       @s.data = data.data
-      console.log @endpoint+":"+data.status
+      # console.log @endpoint+":"+data.status
       if data.status != "loaded" && data.status != "not_logged_in"
         @poll = @timeout(
           =>
@@ -139,7 +140,7 @@ app.service 'Timeline', [ '$http', '$timeout', '$location', ($http, $timeout, $l
   new DataLoader( '/timeline.json', $http, $timeout, $location )
 ]
 
-app.service 'WordCloud', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
+app.service 'Wordcloud', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
   new DataLoader( '/wordcloud.json', $http, $timeout, $location )
 ]
 
@@ -169,6 +170,11 @@ app.service 'Friends', [ '$http', '$timeout', '$location', ($http, $timeout, $lo
 
 @TimelineController = ["$scope", "Timeline", ($scope, Timeline) ->
   Timeline.scope( $scope )
+]
+
+@WordcloudController = ["$scope", "Wordcloud", ($scope, Wordcloud) ->
+  $scope.data = [["test", 10],["test2",5]]
+  Wordcloud.scope( $scope )
 ]
 
 @FriendsController = ["$scope", "Friends", ($scope, Friends) ->

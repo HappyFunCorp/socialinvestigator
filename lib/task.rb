@@ -28,6 +28,9 @@ class Task
       # els
       if task.status == "queued" && task.queued_too_long?
         task.status = "shed"
+      elsif task.data_fresh_enough?
+        task.log "Data fresh, moving along"
+        task.status = "loaded"
       else
         task.status = "processing"
         if task.process
@@ -98,8 +101,12 @@ class Task
   end
 
   def last_loaded
-    return Time.parse @attrs['last_loaded'] if @attrs['last_loaded']
+    return Time.parse @attrs['last_loaded'] if @attrs['last_loaded'] && @attrs['last_loaded'] != ""
     nil
+  end
+
+  def last_loaded= time
+    redis.hmset name, "last_loaded", time
   end
 
   def queued_at
@@ -120,10 +127,14 @@ class Task
     return true if status != "loaded" && status != "processing" && status != "queued"
 
     if status == "loaded"
-      return true if Time.now.to_i > (last_loaded||0).to_i + 60*60*4  # 4 hours
+      return true if !data_fresh_enough?
     end
 
     false
+  end
+
+  def data_fresh_enough?
+    Time.now.to_i < (last_loaded||0).to_i + 60*60*4  # 4 hours
   end
 
   def add_watcher queue_name
@@ -172,6 +183,7 @@ class Task
   def self.requeue key, user=nil
     task = load key
     task.user = user
+    task.last_loaded = nil
     queue! task
     task.status
   end
