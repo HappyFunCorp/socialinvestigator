@@ -9512,7 +9512,7 @@ angular.module('d3').directive('wordcloud', [
         var width = 800;
         var height = 600;
         var fontFamily = 'Impact';
-        var fontSize = 100;
+        var fontSize = 12;
         var words;
         if (angular.isDefined(attrs.width))
           width = attrs.width;
@@ -9544,20 +9544,22 @@ angular.module('d3').directive('wordcloud', [
           element.text('wordcloud: font-size attribute not valid. font-size ' + attrs.fontSize + ' -> ' + fontSize);
           return;
         }
+        fontSize = d3.scale["log"]().range([10, 300]);
         var cloudFactory = function (words) {
           var fill = d3.scale.category20();
           d3.layout.cloud().size([
             width,
             height
           ]).words(words.map(function (d) {
-            // console.log( "Returning size: " + (d[1]*3 + fontSize) )
+            console.log( "Returning size for " + d[1] + ":" + fontSize(d[1]))
             return {
               text: d[0],
-              size: d[1]*3 + fontSize // Math.random() * fontSize
+              size: fontSize(d[1])
             };
-          })).rotate(function () {
-            return ~~(Math.random() * 2) * -90;
-          }).font(fontFamily).fontSize(function (d) {
+          })).spiral("archimedean") //.rotate(function () {
+            //return ~~(Math.random() * 2) * -90;
+          // })
+        .font(fontFamily).fontSize(function (d) {
             return d.size;
           }).on('end', draw).start();
           function draw(words) {
