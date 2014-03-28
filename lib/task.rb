@@ -8,7 +8,11 @@ class Task
   def self.process_queues
     Task.queues.collect do |queue_name,qclazz|
       Thread.start do
-        qclazz.process( new_redis )
+        begin
+          qclazz.process( new_redis )
+        rescue e
+          puts e
+        end
       end
     end.each(&:join)
   end

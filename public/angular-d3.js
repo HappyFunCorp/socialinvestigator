@@ -9551,7 +9551,7 @@ angular.module('d3').directive('wordcloud', [
             width,
             height
           ]).words(words.map(function (d) {
-            console.log( "Returning size for " + d[1] + ":" + fontSize(d[1]))
+            // console.log( "Returning size for " + d[1] + ":" + fontSize(d[1]))
             return {
               text: d[0],
               size: fontSize(d[1])
@@ -9585,8 +9585,8 @@ angular.module('d3').directive('wordcloud', [
           }
         };
         scope.$watch( 'words', function( newData, oldData ) {
-          console.log( "Resetting the word cloud" );
-          console.log( newData );
+          // console.log( "Resetting the word cloud" );
+          // console.log( newData );
           words = newData;
           if( words ) {
             element.text('');

@@ -2,8 +2,8 @@
   .col-lg-12
     %h1 Hello there
 
-    %a{ :href=>"/login" } Login
+    %a.btn.btn-default{ "href" => "/login"} Login
 
-    / #vis
-    %wordcloud{ words: "words" }
-
+.row{ "ng-show" => "logged_in" }
+  .col-lg-12
+    %h1 Hi {{ whoami }}

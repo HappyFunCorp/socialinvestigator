@@ -1,4 +1,4 @@
-app = angular.module( "socialinvestigator", ['ngRoute','d3'] )
+app = angular.module( "socialinvestigator", ['ngRoute'] )
 
 
 app.config ['$routeProvider', ($routeProvider) ->
@@ -7,30 +7,6 @@ app.config ['$routeProvider', ($routeProvider) ->
     when( '/home', { templateUrl: '/home.html', controller: "HomeController" } ).
     otherwise({ redirectTo: '/home' })
 ]
-
-app.directive "Awordcloud", [ ->
-  restrict: 'E'
-  scope:
-    words: '='
-    graph: '@'
-    categories: '@'
-  link: (scope, element, attrs) ->
-    height = 400
-    width = 800
-
-    scope.$watch 'words', (newData,oldData) ->
-      return if newData == undefined
-
-      console.log newData
-
-      window.parseText( "alpha alpha beta beta beta theta")
-
-      console.log "words have been set!"
-
-
-  replace: true
-]
-
 
 app.run( ["$rootScope", ($rootScope) ->
   $rootScope.logged_in = window.logged_in
@@ -84,23 +60,33 @@ app.service 'Wordcloud', [ '$http', '$timeout', '$location', ($http, $timeout, $
   new DataLoader( '/wordcloud.json', $http, $timeout, $location )
 ]
 
+app.service 'UserInfo', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
+  new DataLoader( '/userinfo.json', $http, $timeout, $location )
+]
+
 app.service 'Friends', [ '$http', '$timeout', '$location', ($http, $timeout, $location) ->
   new DataLoader( '/friends.json', $http, $timeout, $location )
 ]
 
-@DashboardController = ["$scope", "$http", "$location", ($scope, $http, $location) ->
+@DashboardController = ["$scope", "$http", "$location", "$rootScope", ($scope, $http, $location, $rootScope) ->
   $scope.whoami = "Anonymous"
 
   $http.get( "/whoami.json" ).success (data) =>
     $scope.whoami = data.screen_name
-    $location.path( "/user/" + $scope.whoami ) if $scope.whoami
+    if $scope.whoami
+      $location.path( "/user/" + $scope.whoami ) 
+      $rootScope.logged_in = true
 
   $scope.show_user = (user) ->
     $location.path( "/user/" + user )
 ]
 
-@HomeController = ["$scope",($scope) ->
+@HomeController = ["$scope","$location",($scope, $location) ->
   console.log "Home Controller"
+
+  if $scope.logged_in
+    $location.path( "/user/" + $scope.whoami ) 
+
 ]
 
 @UserController = ["$scope","$routeParams", ($scope,$routeParams) ->
@@ -119,4 +105,8 @@ app.service 'Friends', [ '$http', '$timeout', '$location', ($http, $timeout, $lo
 
 @FriendsController = ["$scope", "Friends", ($scope, Friends) ->
   Friends.scope( $scope )
+]
+
+@UserInfoController  = ["$scope", "UserInfo", ($scope, UserInfo) ->
+  UserInfo.scope( $scope )
 ]

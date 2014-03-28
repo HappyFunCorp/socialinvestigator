@@ -62,6 +62,7 @@ class FriendsTask < TwitterTask
         running_count = 0
         friends.each do |f|
           redis.sadd "friends:#{key}", f.screen_name
+          UserinfoTask.store_twitter_user_stats f, redis
           running_count += 1
           # myfile.puts "\"#{running_count}\",\"#{f.name.gsub('"','\"')}\",\"#{f.screen_name}\",\"#{f.url}\",\"#{f.followers_count}\",\"#{f.location.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.created_at}\",\"#{f.description.gsub('"','\"').gsub(/[\n\r]/," ")}\",\"#{f.lang}\",\"#{f.time_zone}\",\"#{f.verified}\",\"#{f.profile_image_url}\",\"#{f.website}\",\"#{f.statuses_count}\",\"#{f.profile_background_image_url}\",\"#{f.profile_banner_url}\""
         end
@@ -177,5 +178,46 @@ class WordcloudTask < TwitterTask
   def data
     redis.zrevrange "wordcloud:#{key}", 0, 100,  {:with_scores=>true}
     # c.Do("ZREVRANGE", word_key, "0", "50", "WITHSCORES"))
+  end
+end
+
+class UserinfoTask < TwitterTask
+  my_queue "userinfo"
+
+  def self.store_twitter_user_stats u, redis = REDIS
+    t = load u.screen_name
+    t.status = "loaded"
+
+    key = "twitteruser:#{u.screen_name}"
+    redis.pipelined do
+      redis.hmset key, "name", u.name
+      redis.hmset key, "location", u.location
+      redis.hmset key, "time_zone", u.time_zone
+      redis.hmset key, "description", u.description
+      redis.hmset key, "followers_count", u.followers_count
+      redis.hmset key, "friends_count", u.friends_count
+      redis.hmset key, "created_at", u.created_at
+      redis.hmset key, "statuses_count", u.statuses_count
+      redis.hmset key, "profile_image_url", u.profile_image_url
+
+      if u.attrs[:entities] && u.attrs[:entities][:url] && u.attrs[:entities][:url][:urls]
+        u.attrs[:entities][:url][:urls].each do |u|
+          redis.sadd "#{key}:urls", u[:expanded_url]
+        end
+      end
+    end
+  end
+
+  def process
+    log "Starting Userinfo Task"
+    log "Starting for #{key}"
+    UserinfoTask.store_twitter_user_stats( client.user( key ) )
+
+    log "Done"
+    true
+  end
+
+  def data
+    redis.hgetall "twitteruser:#{key}"
   end
 end

@@ -171,4 +171,23 @@ class WebApp < Sinatra::Base
     content_type :json
     ret.to_json
   end
+
+
+  get '/userinfo.json' do
+    ret = {}
+    if logged_in?
+      user = params[:screen_name] || session[:screen_name]
+      if params[:force]
+        puts "Requeueing..."
+
+        UserinfoTask.requeue user, session[:screen_name]
+      end
+      ret = UserinfoTask.data user, session[:screen_name]
+    else
+      ret[:status] = "not_logged_in"
+    end
+
+    content_type :json
+    ret.to_json
+  end
 end

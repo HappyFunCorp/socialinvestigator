@@ -2,7 +2,7 @@
   .col-sm-4{ "ng-controller" => "FriendsController" }
     %h2
       Friends
-      %button.button.pull-right{ "ng-click"=>"refresh()" } Refresh
+      %button.btn.btn-primary.pull-right{ "ng-click"=>"refresh()" } Refresh
 
     %p#friend_status {{ status }}
 
@@ -10,16 +10,39 @@
       %li{ "ng-repeat" => "friend in data"}
         %a{"ng-click" => "show_user(friend)"} {{ friend }}
 
-  .col-sm-8{ "ng-controller" => "WordcloudController" }
+  .col-sm-8{ "ng-controller" => "UserInfoController" }
     %h2
-      Timeline: {{user}}
+      Detail: {{user}}
       %button.button.pull-right{ "ng-click"=>"refresh()" } Refresh
 
     %p#timeline_status {{ status }}
 
-    %wordcloud{ words: "data", id: "vis" }
 
-    %ul#timeline
-      %li{ "ng-repeat"=>"word in data"}
-        %span.created_at {{ word[1] | number }}
-        %span.tweet {{ word[0] }}
+    %table.table.table-striped
+      %tr
+        %th name
+        %td {{ data.name }}
+      %tr
+        %th location
+        %td {{ data.location }}
+      %tr
+        %th time_zone
+        %td {{ data.time_zone }}
+      %tr
+        %th description
+        %td {{ data.description }}
+      %tr
+        %th followers_count
+        %td {{ data.followers_count }}
+      %tr
+        %th friends_count
+        %td {{ data.friends_count }}
+      %tr
+        %th created_at
+        %td {{ data.created_at }}
+      %tr
+        %th statuses_count
+        %td {{ data.statuses_count }}
+      %tr
+        %th profile_image_url
+        %td {{ data.profile_image_url }}
