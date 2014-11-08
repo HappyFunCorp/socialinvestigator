@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby -U
+
+require 'socialinvestigator'
+
+Socialinvestigator::HammerOfTheGods.start( ARGV )
