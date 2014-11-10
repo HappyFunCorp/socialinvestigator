@@ -6,12 +6,12 @@ module Socialinvestigator
     class TwitterCli < Thor
       desc "user SCREENAME", "Look up info for a specific user."
       def user( username )
-        print_user_info client.user( "wschenk" )
+        agent.print_user_info client.user( "wschenk" )
       end
 
       desc "lookup URL", "Resolve a link"
       def lookup( url )
-        puts lookup_url( url )
+        puts agent.lookup_url( url )
       end
 
       desc "user_timeline", "Show the authenticated user's tweets"
@@ -71,7 +71,7 @@ module Socialinvestigator
           puts "#{t.id}:#{t.created_at}:@#{t.user.user_name}:#{t.user.followers_count}:#{t.retweet_count}:#{t.text}"
           reach += t.user.followers_count
           if options[:user_info]
-            print_user_info t.user if options[:user_info]
+            agent.print_user_info t.user if options[:user_info]
             puts
           end
         end
