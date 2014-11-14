@@ -15,6 +15,7 @@ Then you can run the command 'socialinvestigator' to begin using it.
 ## Usage
 
 Full help
+
     $ socialinvestigator help
 
 ## Hacker News Search
