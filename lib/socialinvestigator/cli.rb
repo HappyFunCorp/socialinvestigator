@@ -1,6 +1,7 @@
 require 'thor'
 require 'socialinvestigator/cli/hn'
 require 'socialinvestigator/cli/twitter'
+require 'socialinvestigator/cli/net'
 
 module Socialinvestigator
   class HammerOfTheGods < Thor
@@ -29,5 +30,8 @@ module Socialinvestigator
 
     desc "twitter COMMANDS", "Twitter Control Module"
     subcommand "twitter", Socialinvestigator::CLI::TwitterCli
+
+    desc "net COMMANDS", "Net control Module"
+    subcommand "net", Socialinvestigator::CLI::Net
   end
 end

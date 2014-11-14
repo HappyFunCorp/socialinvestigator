@@ -6,7 +6,7 @@ module Socialinvestigator
     class TwitterCli < Thor
       desc "user SCREENAME", "Look up info for a specific user."
       def user( username )
-        agent.print_user_info client.user( "wschenk" )
+        agent.print_user_info client.user( username )
       end
 
       desc "lookup URL", "Resolve a link"
@@ -150,4 +150,8 @@ module Socialinvestigator
       end
     end
   end
+end
+
+if __FILE__ == $0
+  Socialinvestigator::CLI::TwitterCli.start( ARGV )
 end

@@ -17,11 +17,29 @@ Then you can run the command 'socialinvestigator' to begin using it.
 Full help
     $ socialinvestigator help
 
+## Looking up information from a URL
+
+Start with a URL, figure out what you can find:
+
+    $ socialinvestigator net page_info http://willschenk.com
+
+To analyse the technology stack, you need to load the datafile from
+https://github.com/ElbertF/Wappalyzer
+which can be done with this command:
+
+    $ socialinvestigator net get_apps_json
+
+## Hacker News Search
+
 Search hacker news for a url:
 
     $ socialinvestigator hn search http://willschenk.com
 
-Setting up twitter.  You'll need to register a twitter app for this to work.
+## Twitter Scripting
+
+_This will be documented soon_
+
+_Setting up twitter.  You'll need to register a twitter app for this to work.
 Full walk through is here http://willschenk.com/scripting-twitter.
 
 Once you have the twitter info, you put it in using the twitter config command:

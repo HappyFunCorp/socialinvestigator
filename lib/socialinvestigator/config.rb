@@ -27,6 +27,16 @@ module Socialinvestigator
         save_yaml( "twitter.yml", config )
       end
 
+      def apps_json
+        read_json( "apps.json" )
+      end
+
+      def apps_json=( data )
+        File.open( "#{@dir}/apps.json", "w" ) do |out|
+          out << data
+        end
+      end
+
       def read_yaml( name )
         file = "#{@dir}/#{name}"
 
@@ -41,6 +51,16 @@ module Socialinvestigator
         File.open( "#{@dir}/#{name}", "w" ) do |out|
           out.write obj.to_yaml
         end
+      end
+
+      def read_json( name )
+        file = "#{@dir}/#{name}"
+
+        if File.exists? file
+          return JSON.parse( File.read( file ) )
+        end
+
+        nil
       end
     end
   end
