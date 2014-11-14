@@ -10,21 +10,24 @@ module Socialinvestigator
   module Client
     module Net
       class PageKnowledge
-        DEBUG = false
+        @debug = false
         TEMPLATE = "%20s: %s\n"
 
-        def initialize; @knowledge = {} end
+        def initialize( debug = false )
+          @debug = debug
+          @knowledge = {}
+        end
 
         def remember( key, value )
           return if value.nil?
-          p key, value if DEBUG
+          p key, value if @debug
 
           @knowledge[key] = value
         end
 
         def another( key, value )
           return if value.nil?
-          p key, value if DEBUG
+          p key, value if @debug
 
           @knowledge[key] ||= []
           @knowledge[key] << value
@@ -124,8 +127,8 @@ module Socialinvestigator
     class NetClient
       # Look up the domain
 
-      def get_knowledge( url )
-        data = Socialinvestigator::Client::Net::PageKnowledge.new
+      def get_knowledge( url, noreverse = false, debug = false )
+        data = Socialinvestigator::Client::Net::PageKnowledge.new( debug )
         dns = Socialinvestigator::Client::Net::DNS.new
 
         uri = URI( url )
@@ -170,32 +173,33 @@ module Socialinvestigator
         end
 
 
-        ip_address = Dnsruby::Resolv.getaddress uri.host
+        if !noreverse
+          ip_address = Dnsruby::Resolv.getaddress uri.host
 
-        if ip_address
-          data.remember :ip_address, ip_address
-          begin
-            data.remember :server_name, Dnsruby::Resolv.getname( ip_address )
-          rescue Dnsruby::NXDomain
-            # Couldn't do the reverse lookup
-          end
+          if ip_address
+            data.remember :ip_address, ip_address
+            begin
+              data.remember :server_name, Dnsruby::Resolv.getname( ip_address )
+            rescue Dnsruby::NXDomain
+              # Couldn't do the reverse lookup
+            end
 
-          location_info = HTTParty.get('http://freegeoip.net/json/' + ip_address)
+            location_info = HTTParty.get('http://freegeoip.net/json/' + ip_address)
 
-          data.remember :server_country, location_info['country']
-          data.remember :server_location, [location_info['city'], location_info['region_name']].select { |x| x }.join( ", ")
-          data.remember :server_latitude, location_info['latitude']
-          data.remember :server_longitude, location_info['longitude']
+            data.remember :server_country, location_info['country_name']
+            data.remember :server_location, [location_info['city'], location_info['region_name']].collect { |x| (x != nil && x != "") ? x : nil }.select { |x| x }.join( ", ")
+            data.remember :server_latitude, location_info['latitude']
+            data.remember :server_longitude, location_info['longitude']
 
-          ip_whois = Whois.lookup ip_address
+            ip_whois = Whois.lookup ip_address
 
-          ip_whois.to_s.each_line.select { |x| x=~/Organization/ }.each do |org|
-            if org =~ /Organization:\s*(.*)\n/
-              data.another :server_ip_owner, $1
+            ip_whois.to_s.each_line.select { |x| x=~/Organization/ }.each do |org|
+              if org =~ /Organization:\s*(.*)\n/
+                data.another :server_ip_owner, $1
+              end
             end
           end
         end
-
 
         # Load up the response
 

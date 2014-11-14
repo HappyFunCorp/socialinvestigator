@@ -10,7 +10,7 @@ require 'whois/record/contact'
 url = ARGV[0] || "http://www.fastcolabs.com/3038014/product-bootcamp-week-six-worth-it"
 
 class PageKnowledge
-  DEBUG = false
+  DEBUG = true
   TEMPLATE = "%20s: %s\n"
 
   def initialize; @knowledge = {} end

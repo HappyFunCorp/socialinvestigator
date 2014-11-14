@@ -4,8 +4,17 @@ module Socialinvestigator
   module CLI
     class Net < Thor
       desc "page_info URL", "Looks at a page to see what social links it finds"
+      options [:noreverse, :debug]
+      long_desc <<-PAGE_INFO
+      page_info URL
+
+      Looks at a page to see what social links it finds
+
+      --noreverse skips the reverse ip lookup and associate whois call
+      --debug prints out every fact that is discovered
+      PAGE_INFO
       def page_info( url )
-        knowledge = client.get_knowledge( url )
+        knowledge = client.get_knowledge( url, options[:noreverse], options[:debug] )
         knowledge.print
       end
 
