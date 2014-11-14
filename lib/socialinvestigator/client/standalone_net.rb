@@ -4,6 +4,9 @@ require 'nokogiri'
 require 'dnsruby'
 require 'whois'
 
+require 'whois/record/parser/blank'
+require 'whois/record/contact'
+
 url = ARGV[0] || "http://www.fastcolabs.com/3038014/product-bootcamp-week-six-worth-it"
 
 class PageKnowledge
@@ -38,6 +41,13 @@ class PageKnowledge
     p :registrant_contact
     p :admin_contact
     p :technical_contact
+    p :server_name
+    p :server_country
+    p :server_location
+    p :server_latitude
+    p :server_longitude
+    p :server_ip_owner
+
     p :emails
     p :title, title
     p :description, description
@@ -153,7 +163,6 @@ end
 #   end
 # end
 
-require 'whois/record/parser/blank'
 whois.parts.each do |p|
   if Whois::Record::Parser.parser_for(p).is_a? Whois::Record::Parser::Blank
     puts "Couldn't find a parser for #{p.host}:"
@@ -161,7 +170,33 @@ whois.parts.each do |p|
   end
 end
 
+# Lookup IP Address info
 
+ip_address = Dnsruby::Resolv.getaddress uri.host
+
+if ip_address
+  data.remember :ip_address, ip_address
+  begin
+    data.remember :server_name, Dnsruby::Resolv.getname( ip_address )
+  rescue Dnsruby::NXDomain
+    # Couldn't do the reverse lookup
+  end
+
+  location_info = HTTParty.get('http://freegeoip.net/json/' + ip_address)
+
+  data.remember :server_country, location_info['country']
+  data.remember :server_location, [location_info['city'], location_info['region_name']].select { |x| x }.join( ", ")
+  data.remember :server_latitude, location_info['latitude']
+  data.remember :server_longitude, location_info['longitude']
+
+  ip_whois = Whois.lookup ip_address
+
+  ip_whois.to_s.each_line.select { |x| x=~/Organization/ }.each do |org|
+    if org =~ /Organization:\s*(.*)\n/
+      data.another :server_ip_owner, $1
+    end
+  end
+end
 
 
 # Load up the response
