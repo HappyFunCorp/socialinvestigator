@@ -17,7 +17,17 @@ Then you can run the command 'socialinvestigator' to begin using it.
 Full help
     $ socialinvestigator help
 
+## Hacker News Search
+
+Code walk through: http://willschenk.com/making-a-command-line-utility-with-gems-and-thor
+
+Search hacker news for a url:
+
+    $ socialinvestigator hn search http://willschenk.com
+
 ## Looking up information from a URL
+
+Code walk through: http://willschenk.com/personal-information-from-only-a-url
 
 Start with a URL, figure out what you can find:
 
@@ -29,20 +39,13 @@ which can be done with this command:
 
     $ socialinvestigator net get_apps_json
 
-## Hacker News Search
-
-Search hacker news for a url:
-
-    $ socialinvestigator hn search http://willschenk.com
-
 ## Twitter Scripting
 
 _This will be documented soon_
 
-_Setting up twitter.  You'll need to register a twitter app for this to work.
-Full walk through is here http://willschenk.com/scripting-twitter.
+Code walk through: http://willschenk.com/scripting-twitter
 
-Once you have the twitter info, you put it in using the twitter config command:
+You'll need to register a twitter app for this to work.  Once you have the twitter info, you put it in using the twitter config command:
 
     $ socialinvestigator twitter config
     
