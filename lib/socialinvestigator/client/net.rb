@@ -3,118 +3,136 @@ require 'httparty'
 require 'nokogiri'
 require 'dnsruby'
 require 'whois'
+require 'whois/record/parser/blank'
+require 'whois/record/contact'
 
 module Socialinvestigator
   module Client
-    class PageKnowledge
-      DEBUG = false
-      TEMPLATE = "%20s: %s\n"
+    module Net
+      class PageKnowledge
+        DEBUG = false
+        TEMPLATE = "%20s: %s\n"
 
-      def initialize; @knowledge = {} end
+        def initialize; @knowledge = {} end
 
-      def remember( key, value )
-        return if value.nil?
-        p key, value if DEBUG
+        def remember( key, value )
+          return if value.nil?
+          p key, value if DEBUG
 
-        @knowledge[key] = value
-      end
+          @knowledge[key] = value
+        end
 
-      def another( key, value )
-        return if value.nil?
-        p key, value if DEBUG
+        def another( key, value )
+          return if value.nil?
+          p key, value if DEBUG
 
-        @knowledge[key] ||= []
-        @knowledge[key] << value
-        @knowledge[key] = @knowledge[key].uniq
-      end
+          @knowledge[key] ||= []
+          @knowledge[key] << value
+          @knowledge[key] = @knowledge[key].uniq
+        end
 
-      def print
-        p :domain
-        p :created_on
-        p :expires_on
-        p :updated_on
-        p :registrar_name
-        p :registrar_url
-        p :registrant_contact
-        p :admin_contact
-        p :technical_contact
-        p :emails
-        p :title, title
-        p :description, description
-        p :twitter_author, twitter_author
-        p :twitter_ids
-        p :image, image
-        p :responsive
-        p :rss_feed
-        p :atom_feed
+        def print
+          p :domain
+          p :created_on
+          p :expires_on
+          p :updated_on
+          p :registrar_name
+          p :registrar_url
+          p :registrant_contact
+          p :admin_contact
+          p :technical_contact
 
-        p :twitter_links
-        p :linkedin_links
-        p :instagram_links
-        p :facebook_links
-        p :googleplus_links
-        p :github_links
-        p :technologies
-      end
+          p :server_name
+          p :server_country
+          p :server_location
+          p :server_latitude
+          p :server_longitude
+          p :server_ip_owner
 
-      def p( key, val = nil )
-        val = @knowledge[key] if val.nil?
-        if val.is_a?( Array )
-          printf TEMPLATE, key, val.join( ", ") if val.size > 0
-        elsif val.is_a?( Whois::Record::Contact )
-          printf TEMPLATE, key, ""
-          [:name, :organization, :address, :city, :zip, :state, :country, :country_code, :phone, :fax, :email, :url, :created_on, :updated_on].each do |key|
-            out = val.send( key )
-            printf "%25s: %s\n", key, out if out && out != ""
+          p :emails
+          p :title, title
+          p :description, description
+          p :twitter_author, twitter_author
+          p :twitter_ids
+          p :image, image
+          p :responsive
+          p :rss_feed
+          p :atom_feed
+
+          p :twitter_links
+          p :linkedin_links
+          p :instagram_links
+          p :facebook_links
+          p :googleplus_links
+          p :github_links
+          p :technologies
+        end
+
+        def p( key, val = nil )
+          val = @knowledge[key] if val.nil?
+          if val.is_a?( Array )
+            printf TEMPLATE, key, val.join( ", ") if val.size > 0
+          elsif val.is_a?( Whois::Record::Contact )
+            printf TEMPLATE, key, ""
+            [:name, :organization, :address, :city, :zip, :state, :country, :country_code, :phone, :fax, :email, :url, :created_on, :updated_on].each do |key|
+              out = val.send( key )
+              printf "%25s: %s\n", key, out if out && out != ""
+            end
+          else
+            printf TEMPLATE, key, val if val
           end
-        else
-          printf TEMPLATE, key, val if val
+        end
+
+        def title
+          @knowledge[:twitter_title] || @knowledge[:og_title] || @knowledge[:page_title]
+        end
+
+        def twitter_author
+          @knowledge[:twitter_creator] || @knowledge[:twitter_by] || @knowledge[:twitter_site_author] || (@knowledge[:twitter_ids] || []).first
+        end
+
+        def description
+          @knowledge[:twitter_description] || @knowledge[:og_description] || @knowledge[:description]
+        end
+
+        def image
+          @knowledge[:twitter_image] || @knowledge[:og_image]
         end
       end
 
-      def title
-        @knowledge[:twitter_title] || @knowledge[:og_title] || @knowledge[:page_title]
-      end
+      class DNS
+        def initialize
+          @resolv = Dnsruby::Resolver.new
+        end
 
-      def twitter_author
-        @knowledge[:twitter_creator] || @knowledge[:twitter_by] || @knowledge[:twitter_site_author] || (@knowledge[:twitter_ids] || []).first
-      end
+        def find_domain( hostname )
+          # puts "Looking for SOA of #{hostname}"
+          soa = @resolv.query( hostname, "SOA" ).answer.select do |rr|
+            rr.is_a? Dnsruby::RR::IN::SOA
+          end
 
-      def description
-        @knowledge[:twitter_description] || @knowledge[:og_description] || @knowledge[:description]
-      end
+          return hostname if soa.length > 0
 
-      def image
-        @knowledge[:twitter_image] || @knowledge[:og_image]
+          parts = hostname.split( /\./ )
+          return nil if parts.length <= 2
+
+          find_domain( parts.slice(1,100).join( "." ) )
+        end
       end
     end
 
     class NetClient
       # Look up the domain
 
-      def find_domain( hostname )
-        # puts "Looking for SOA of #{hostname}"
-        dns = Dnsruby::Resolver.new
-        soa = dns.query( hostname, "SOA" ).answer.select do |rr|
-          rr.is_a? Dnsruby::RR::IN::SOA
-        end
-
-        return hostname if soa.length > 0
-
-        parts = hostname.split( /\./ )
-        return nil if parts.length <= 2
-
-        find_domain( parts.slice(1,100).join( "." ) )
-      end
-
       def get_knowledge( url )
-        data = PageKnowledge.new
+        data = Socialinvestigator::Client::Net::PageKnowledge.new
+        dns = Socialinvestigator::Client::Net::DNS.new
 
         uri = URI( url )
 
         data.remember( :hostname, uri.hostname )
 
-        domain = find_domain(uri.hostname)
+        domain = dns.find_domain(uri.hostname)
 
         data.remember( :domain, domain )
 
@@ -143,16 +161,7 @@ module Socialinvestigator
             data.remember( :technical_contact, c )
           end
         end
-        #   [
-        #     :name,:organization,:address,:city,
-        #     :zip,:state,:country,:country_code,
-        #     :phone,:fax,:email,:url].each do |k|
-        #       val = c.send(k)
-        #       printf "%15s : %s\n", k.to_s, val if !val.nil?
-        #   end
-        # end
 
-        require 'whois/record/parser/blank'
         whois.parts.each do |p|
           if Whois::Record::Parser.parser_for(p).is_a? Whois::Record::Parser::Blank
             puts "Couldn't find a parser for #{p.host}:"
@@ -161,6 +170,31 @@ module Socialinvestigator
         end
 
 
+        ip_address = Dnsruby::Resolv.getaddress uri.host
+
+        if ip_address
+          data.remember :ip_address, ip_address
+          begin
+            data.remember :server_name, Dnsruby::Resolv.getname( ip_address )
+          rescue Dnsruby::NXDomain
+            # Couldn't do the reverse lookup
+          end
+
+          location_info = HTTParty.get('http://freegeoip.net/json/' + ip_address)
+
+          data.remember :server_country, location_info['country']
+          data.remember :server_location, [location_info['city'], location_info['region_name']].select { |x| x }.join( ", ")
+          data.remember :server_latitude, location_info['latitude']
+          data.remember :server_longitude, location_info['longitude']
+
+          ip_whois = Whois.lookup ip_address
+
+          ip_whois.to_s.each_line.select { |x| x=~/Organization/ }.each do |org|
+            if org =~ /Organization:\s*(.*)\n/
+              data.another :server_ip_owner, $1
+            end
+          end
+        end
 
 
         # Load up the response
