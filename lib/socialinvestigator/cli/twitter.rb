@@ -114,6 +114,7 @@ module Socialinvestigator
         puts "Saved."
       end
 
+
       private
       def agent
         @agent ||= Socialinvestigator::Client::Twitter.new

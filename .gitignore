@@ -21,3 +21,4 @@ tmp
 *.a
 mkmf.log
 apps.json
+.DS_Store
